@@ -1,0 +1,47 @@
+# .github/workflows/refresh-card-index.yml
+name: Refresh card index
+
+on:
+  schedule:
+    - cron: "17 11 * * *"        # 11:17 UTC ≈ 6:17am Central. Deliberately
+                                 # off-the-hour: GitHub's shared scheduler is
+                                 # congested at :00 and delays jobs.
+  workflow_dispatch:              # manual trigger for testing
+
+permissions:
+  contents: write
+
+concurrency:
+  group: card-index
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build card index
+        run: |
+          python scripts/build_card_index.py \
+            --bulk default_cards \
+            --out cards.csv \
+            --min-cards 25000
+
+      - name: Compress
+        run: gzip -9 -f cards.csv
+
+      - name: Publish to single-commit data branch
+        run: |
+          git config user.name  "card-index-bot"
+          git config user.email "card-index-bot@users.noreply.github.com"
+          git checkout --orphan data-tmp
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          git add -f cards.csv.gz BUILD_INFO.txt
+          git commit -m "card index $(date -u +%Y-%m-%d)"
+          git push -f origin data-tmp:data

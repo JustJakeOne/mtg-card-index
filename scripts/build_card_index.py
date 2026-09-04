@@ -20,7 +20,7 @@ import urllib.request
 from datetime import datetime, timezone
 
 BULK_INDEX = "https://api.scryfall.com/bulk-data/{}"
-UA = "ulamog-card-index/1.0 (deck validation; contact: you@example.com)"
+UA = "ulamog-card-index/1.0 (deck validation; contact: thegloriousexcess@gmail.com)"
 
 # Layouts that are not real, castable cards and only add noise.
 SKIP_LAYOUTS = {

@@ -25,15 +25,22 @@ jobs:
           python-version: "3.12"
 
       - name: Take cards.csv.gz from data branch
-        run: git fetch origin data && git checkout origin/data -- cards.csv.gz
-
-      - name: Mirror Spellbook dump and Comprehensive Rules
         run: |
-          python scripts/build_combos.py --cards cards.csv.gz --out combos.jsonl
-          python scripts/fetch_comp_rules.py --out MagicCompRules.txt
+          git fetch origin data
+          git checkout origin/data -- cards.csv.gz
+          git checkout origin/data -- MagicCompRules.txt BUILD_INFO.txt || true
+
+      - name: Mirror Spellbook dump
+        run: python scripts/build_combos.py --cards cards.csv.gz --out combos.jsonl
+
+      - name: Fetch Comprehensive Rules
+        continue-on-error: true
+        run: python scripts/fetch_comp_rules.py --out MagicCompRules.txt
 
       - name: Publish to data branch (preserve card files)
         run: |
-          python scripts/publish_data_branch.py \
-            --own combos.jsonl MagicCompRules.txt BUILD_INFO.txt \
-            --message "combos $(date -u +%Y-%m-%d)"
+          own="combos.jsonl BUILD_INFO.txt"
+          if [ -f MagicCompRules.txt ]; then
+            own="$own MagicCompRules.txt"
+          fi
+          python scripts/publish_data_branch.py --own $own --message "combos $(date -u +%Y-%m-%d)"

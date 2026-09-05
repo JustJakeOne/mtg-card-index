@@ -3,22 +3,20 @@ name: Refresh card index
 
 on:
   schedule:
-    - cron: "17 11 * * *"        # 11:17 UTC ≈ 6:17am Central. Deliberately
-                                 # off-the-hour: GitHub's shared scheduler is
-                                 # congested at :00 and delays jobs.
-  workflow_dispatch:              # manual trigger for testing
+    - cron: "17 11 * * *"        # 11:17 UTC. Off the hour on purpose.
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: card-index
+  group: index-data
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -26,22 +24,20 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Build card index
+      - name: Build cards, printings, tags, game changers
         run: |
           python scripts/build_card_index.py \
             --bulk default_cards \
             --out cards.csv \
-            --min-cards 25000
+            --printings-out printings.csv \
+            --min-cards 25000 \
+            --min-printings 80000
+          python scripts/build_oracle_tags.py --out oracle_tags.csv
+          python scripts/build_game_changers.py --out game_changers.json
+          gzip -9 -f cards.csv printings.csv oracle_tags.csv
 
-      - name: Compress
-        run: gzip -9 -f cards.csv
-
-      - name: Publish to single-commit data branch
+      - name: Publish to data branch (preserve combos and rules)
         run: |
-          git config user.name  "card-index-bot"
-          git config user.email "card-index-bot@users.noreply.github.com"
-          git checkout --orphan data-tmp
-          git rm -rf --cached . >/dev/null 2>&1 || true
-          git add -f cards.csv.gz BUILD_INFO.txt
-          git commit -m "card index $(date -u +%Y-%m-%d)"
-          git push -f origin data-tmp:data
+          python scripts/publish_data_branch.py \
+            --own cards.csv.gz printings.csv.gz oracle_tags.csv.gz game_changers.json BUILD_INFO.txt \
+            --message "card index $(date -u +%Y-%m-%d)"

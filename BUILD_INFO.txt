@@ -1,0 +1,10 @@
+built_at=2026-09-06T14:13:40.077706+00:00
+source=default_cards
+cards=34862
+printings=111127
+oracle_tags=231078
+game_changers=53
+combos_built_at=2026-09-05T01:05:18.272728+00:00
+combos=106212
+combos_source=variants.json.gz 2026-09-04T23:09:28.670202+00:00 6.3.3
+rules_built_at=2026-09-05T01:05:19.645886+00:00

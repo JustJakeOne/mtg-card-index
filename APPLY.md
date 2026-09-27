@@ -17,7 +17,7 @@ Then:
 1. https://github.com/JustJakeOne/mtg-card-index/actions/workflows/refresh-card-index.yml → **Run workflow**
 2. After that is green: https://github.com/JustJakeOne/mtg-card-index/actions/workflows/refresh-combos.yml → **Run workflow**
 
-Confirm https://github.com/JustJakeOne/mtg-card-index/tree/data lists `printings.csv.gz`, `oracle_tags.csv.gz`, `game_changers.json`, `combos.jsonl`, `MagicCompRules.txt`, and a `cards.csv.gz` whose header includes `oracle_text`.
+Confirm https://github.com/JustJakeOne/mtg-card-index/tree/data lists `printings.csv.gz`, `oracle_tags.csv.gz`, `game_changers.json`, `default_cards.jsonl.gz`, `combos.jsonl`, `MagicCompRules.txt`, and a `cards.csv.gz` whose header includes `oracle_text`.
 
 Then on the DeckForge machine:
 

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 import urllib.request
 from pathlib import Path
@@ -17,7 +18,9 @@ SKIP_LAYOUTS = {
 }
 
 INFO_ORDER = [
-    "built_at", "source", "cards", "printings", "oracle_tags", "game_changers",
+    "built_at", "source", "cards", "printings",
+    "bulk_file", "bulk_updated_at", "bulk_bytes",
+    "oracle_tags", "game_changers",
     "combos_built_at", "combos", "combos_source", "rules_built_at",
 ]
 
@@ -30,7 +33,7 @@ def urlopen(url: str, timeout: int = 120):
     return urllib.request.urlopen(request(url), timeout=timeout)
 
 
-def resolve_bulk_uri(bulk_type: str) -> str:
+def resolve_bulk(bulk_type: str) -> dict:
     with urlopen(BULK_INDEX.format(bulk_type), timeout=60) as resp:
         meta = json.load(resp)
     uri = meta.get("jsonl_download_uri") or meta.get("download_uri")
@@ -41,7 +44,35 @@ def resolve_bulk_uri(bulk_type: str) -> str:
         f"size={meta.get('size')} -> {uri}",
         file=sys.stderr,
     )
-    return uri
+    return {
+        "uri": uri,
+        "updated_at": meta.get("updated_at") or "",
+        "compressed_size": meta.get("compressed_size"),
+    }
+
+
+def resolve_bulk_uri(bulk_type: str) -> str:
+    return resolve_bulk(bulk_type)["uri"]
+
+
+def download_file(uri: str, dest: Path, timeout: int = 300) -> int:
+    """Save a remote file. Writes a sibling partial file, then renames it into place."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    partial = dest.with_name(dest.name + ".partial")
+    try:
+        with urlopen(uri, timeout=timeout) as resp, partial.open("wb") as fh:
+            shutil.copyfileobj(resp, fh, length=1024 * 1024)
+        with partial.open("rb") as fh:
+            magic = fh.read(2)
+        if magic != b"\x1f\x8b":
+            raise SystemExit(f"Download is not gzip: {uri}")
+        size = partial.stat().st_size
+        partial.replace(dest)
+    except BaseException:
+        partial.unlink(missing_ok=True)
+        raise
+    print(f"[bulk] saved {size} bytes -> {dest}", file=sys.stderr)
+    return size
 
 
 def parse_build_info(text: str) -> dict[str, str]:

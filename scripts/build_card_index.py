@@ -13,11 +13,15 @@ import argparse
 import csv
 import gzip
 import json
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from common import SKIP_LAYOUTS, resolve_bulk_uri, request, upsert_build_info
+from common import SKIP_LAYOUTS, download_file, request, resolve_bulk, upsert_build_info
+
+# GitHub rejects blobs over 100 MB. Refuse before the data-branch publish.
+MAX_BULK_BYTES = 95_000_000
 
 CARD_FIELDS = [
     "name", "front_name", "mana_cost", "cmc", "color_identity",
@@ -164,13 +168,39 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bulk", default="default_cards")
     ap.add_argument("--input", help="Local .jsonl/.jsonl.gz instead of downloading")
+    ap.add_argument(
+        "--save-bulk",
+        help="Save the raw bulk jsonl.gz here, then build the CSVs from that file",
+    )
     ap.add_argument("--out", default="cards.csv")
     ap.add_argument("--printings-out", default="printings.csv")
     ap.add_argument("--min-cards", type=int, default=25000)
     ap.add_argument("--min-printings", type=int, default=80000)
     args = ap.parse_args()
 
-    uri = args.input or resolve_bulk_uri(args.bulk)
+    bulk_updated = ""
+    bulk_bytes = None
+    if args.input:
+        source = Path(args.input)
+        if args.save_bulk:
+            dest = Path(args.save_bulk)
+            if source.resolve() != dest.resolve():
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, dest)
+            uri = str(dest)
+            bulk_bytes = dest.stat().st_size
+        else:
+            uri = args.input
+    else:
+        meta = resolve_bulk(args.bulk)
+        bulk_updated = meta["updated_at"]
+        if args.save_bulk:
+            dest = Path(args.save_bulk)
+            bulk_bytes = download_file(meta["uri"], dest)
+            uri = str(dest)
+        else:
+            uri = meta["uri"]
+
     with open_stream(uri) as stream:
         n_cards, n_printings = build(stream, args.out, args.printings_out)
 
@@ -183,13 +213,26 @@ def main() -> None:
               file=sys.stderr)
         sys.exit(1)
 
-    upsert_build_info(
-        Path("BUILD_INFO.txt"),
+    if bulk_bytes is not None and bulk_bytes > MAX_BULK_BYTES:
+        print(
+            f"[FAIL] bulk file is {bulk_bytes} bytes (> {MAX_BULK_BYTES}); "
+            "GitHub rejects files over 100 MB",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    info: dict[str, object] = dict(
         built_at=datetime.now(timezone.utc).isoformat(),
         source=args.bulk,
         cards=n_cards,
         printings=n_printings,
     )
+    if args.save_bulk:
+        info["bulk_file"] = Path(args.save_bulk).name
+        info["bulk_bytes"] = bulk_bytes
+        if bulk_updated:
+            info["bulk_updated_at"] = bulk_updated
+    upsert_build_info(Path("BUILD_INFO.txt"), **info)
 
 
 if __name__ == "__main__":

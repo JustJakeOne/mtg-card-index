@@ -24,6 +24,7 @@ KNOWN = [
     "printings.csv.gz",
     "oracle_tags.csv.gz",
     "game_changers.json",
+    "default_cards.jsonl.gz",
     "combos.jsonl",
     "MagicCompRules.txt",
 ]

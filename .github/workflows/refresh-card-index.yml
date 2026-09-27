@@ -28,6 +28,7 @@ jobs:
         run: |
           python scripts/build_card_index.py \
             --bulk default_cards \
+            --save-bulk default_cards.jsonl.gz \
             --out cards.csv \
             --printings-out printings.csv \
             --min-cards 25000 \
@@ -39,5 +40,5 @@ jobs:
       - name: Publish to data branch (preserve combos and rules)
         run: |
           python scripts/publish_data_branch.py \
-            --own cards.csv.gz printings.csv.gz oracle_tags.csv.gz game_changers.json BUILD_INFO.txt \
+            --own cards.csv.gz printings.csv.gz oracle_tags.csv.gz game_changers.json default_cards.jsonl.gz BUILD_INFO.txt \
             --message "card index $(date -u +%Y-%m-%d)"

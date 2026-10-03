@@ -1,0 +1,13 @@
+built_at=2026-10-03T15:09:25.406446+00:00
+source=default_cards
+cards=34921
+printings=111918
+bulk_file=default_cards.jsonl.gz
+bulk_updated_at=2026-10-03T09:05:39.295+00:00
+bulk_bytes=78692726
+oracle_tags=235026
+game_changers=53
+combos_built_at=2026-09-28T11:48:15.524790+00:00
+combos=108518
+combos_source=variants.json.gz 2026-09-28T11:21:02.405212+00:00 7.1.0
+rules_built_at=2026-09-28T11:48:16.798496+00:00
